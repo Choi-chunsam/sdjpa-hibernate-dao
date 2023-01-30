@@ -103,15 +103,20 @@ public class DaoIntegrationTest {
         Author saved = authorDao.saveNewAuthor(author);
 
         authorDao.deleteAuthorById(saved.getId());
+        Author deleted = authorDao.getById(saved.getId());
+//        assertThrows(EmptyResultDataAccessException.class, () -> {
+//
+//        });
+        assertThat(deleted).isNull();
 
-        assertThrows(EmptyResultDataAccessException.class, () -> {
-            Author deleted = authorDao.getById(saved.getId());
-        });
+        assertThat(authorDao.getById(saved.getId()));
 
     }
 
     @Test
     void testUpdateAuthor() {
+
+        //이제 우리는 테스트를 커밋하고 업데이트하고 다시 가져온 이후로 테스트가 데이터베이스까지 지속되고 있음을 실제로 알고 있습니다.
         Author author = new Author();
         author.setFirstName("john");
         author.setLastName("t");
@@ -132,6 +137,7 @@ public class DaoIntegrationTest {
         Author saved = authorDao.saveNewAuthor(author);
 
         assertThat(saved).isNotNull();
+        assertThat(saved.getId()).isNotNull();
     }
 
     @Test
