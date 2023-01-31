@@ -5,7 +5,11 @@ import org.springframework.stereotype.Component;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.Query;
 import javax.persistence.TypedQuery;
+import javax.persistence.criteria.*;
+import java.util.List;
+import java.util.Queue;
 
 /**
  * Created by jt on 8/28/21.
@@ -20,17 +24,97 @@ public class AuthorDaoImpl implements AuthorDao {
     }
 
     @Override
+    public List<Author> findAll() {
+        EntityManager em = getEntityManager();
+        try {
+            TypedQuery<Author> typedQuery = em.createNamedQuery("author_find_all",Author.class);
+
+            return typedQuery.getResultList();
+        }finally {
+            em.close();
+        }
+
+    }
+
+    @Override
+    public List<Author> listAuthorByLastNameLike(String lastName) {
+        EntityManager em = getEntityManager();
+
+        try {
+            Query query = em.createQuery("SELECT a from Author a WHERE a.lastName like :last_name");
+            query.setParameter("last_name",lastName + "%");
+            List<Author> authors = query.getResultList();
+
+            return authors;
+        }finally {
+            em.close(); //connection pool을 위해
+        }
+
+    }
+
+    @Override
     public Author getById(Long id) {
         //Author.class는 하이버네이트가 엔터티로 매핑되어 있기 때문에 하이버네이트가 알고 있는 클래스를 찾도록 요청하는 클래스입니다.
         return getEntityManager().find(Author.class, id);
     }
 
     @Override
-    public Author findAuthorByName(String firstName, String lastName) {
-        //namedParameter
-        TypedQuery<Author> query = getEntityManager().createQuery("SELECT a from Author a " +
-                "WHERE a.firstName = :first_name and a.lastName = : last_name",Author.class);
+    public Author findAuthorByNameCriteria(String firstName, String lastName) {
+        EntityManager em = getEntityManager();
 
+        try {
+            //building the criteriaBuilder
+            CriteriaBuilder criteriaBuilder = em.getCriteriaBuilder();
+            //criteriaBuilder로부터 criteriaQuery객체를 얻는다.
+            CriteriaQuery<Author> criteriaQuery = criteriaBuilder.createQuery(Author.class);
+
+            //criteriaQuery로부터 Root Element를 얻고 Root는
+            // predicate에 대한 element로부터 lastName과 firstName을 reference한다.
+            Root<Author> root = criteriaQuery.from(Author.class);
+
+            ParameterExpression<String> firstNameParam = criteriaBuilder.parameter(String.class);
+            ParameterExpression<String> lastNameParam = criteriaBuilder.parameter(String.class);
+
+            Predicate firstNamePred = criteriaBuilder.equal(root.get("firstName"),firstNameParam);
+            Predicate lastNamePred = criteriaBuilder.equal(root.get("lastName"),lastNameParam);
+
+            criteriaQuery.select(root).where(criteriaBuilder.and(firstNamePred,lastNamePred));
+
+            TypedQuery<Author> typedQuery = em.createQuery(criteriaQuery);
+            typedQuery.setParameter(firstNameParam,firstName);
+            typedQuery.setParameter(lastNameParam,lastName);
+
+
+            return typedQuery.getSingleResult();
+        }finally {
+            em.close();
+        }
+    }
+
+    @Override
+    public Author findAuthorByNameNative(String firstName, String lastName) {
+        EntityManager em = getEntityManager();
+
+        try {
+            Query query = em.createNativeQuery("SELECT * FROM Author a WHERE a.first_name = ? and a.last_name = ?", Author.class);
+
+            query.setParameter(1,firstName);
+            query.setParameter(2,lastName);
+
+
+            return (Author) query.getSingleResult();
+        }finally {
+            em.close();
+        }
+    }
+
+    @Override
+    public Author findAuthorByName(String firstName, String lastName) {
+        EntityManager em = getEntityManager();
+        //namedParameter
+        //TypedQuery<Author> query = getEntityManager().createQuery("SELECT a from Author a " +
+        //        "WHERE a.firstName = :first_name and a.lastName = :last_name",Author.class);
+        TypedQuery<Author> query = em.createNamedQuery("find_by_name", Author.class);
         query.setParameter("first_name",firstName);
         query.setParameter("last_name",lastName);
 
