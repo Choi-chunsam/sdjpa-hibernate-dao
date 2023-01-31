@@ -46,17 +46,24 @@ public class AuthorDaoImpl implements AuthorDao {
         em.persist(author);
         em.flush();
         em.getTransaction().commit();
+        em.close();
         return author;
     }
 
     @Override
     public Author updateAuthor(Author author) {
         EntityManager em = getEntityManager();
-        em.joinTransaction();
-        em.merge(author); //merge 존재하는 entity를 업데이트 해라.
-        em.flush();//flush는 하이버네이트에게 데이터베이스에 기대해서 SQL트랜잭션을 실행시켜라.
-        em.clear();//first level cache를 없앤다.
-        return em.find(Author.class, author.getId());
+        try {
+            em.joinTransaction();
+            em.merge(author); //merge 존재하는 entity를 업데이트 해라.
+            em.flush();//flush는 하이버네이트에게 데이터베이스에 기대해서 SQL트랜잭션을 실행시켜라.
+            em.clear();//first level cache를 없앤다.
+            return em.find(Author.class, author.getId());
+        } finally {
+            em.close();
+        }
+
+
     }
 
     @Override
@@ -67,6 +74,7 @@ public class AuthorDaoImpl implements AuthorDao {
         em.remove(author);//transactional context는 실행되지만, 이것은 lazy to lead다.바로 실행하지않는다.
         em.flush();
         em.getTransaction().commit();
+        em.close();
     }
 
     //이것은 전형적인 팩토리 프로 애플리케이션 디자인 패턴이므로 여기서는 팩토리 패턴을 사용하고 있습니다.
